@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_tts/flutter_tts.dart';
 
 import 'package:intl/intl.dart';
 import '../models/log_entry.dart';
@@ -42,6 +43,7 @@ class _MainTranslationScreenState extends State<MainTranslationScreen> with Sing
   bool _isPlayingAudio = false;
   Timer? _simulationTimer;
   late AnimationController _pulseController;
+  final FlutterTts flutterTts = FlutterTts();
 
   @override
   void initState() {
@@ -51,6 +53,10 @@ class _MainTranslationScreenState extends State<MainTranslationScreen> with Sing
       duration: const Duration(milliseconds: 1000),
     )..repeat(reverse: true);
     
+    flutterTts.setCompletionHandler(() {
+      if (mounted) setState(() => _isPlayingAudio = false);
+    });
+
     _startSimulation();
   }
 
@@ -88,23 +94,23 @@ class _MainTranslationScreenState extends State<MainTranslationScreen> with Sing
 
   @override
   void dispose() {
+    flutterTts.stop();
     _simulationTimer?.cancel();
     _pulseController.dispose();
     super.dispose();
   }
 
-  void _handlePlayAudio() {
+  void _handlePlayAudio() async {
     HapticFeedback.lightImpact();
     setState(() => _isPlayingAudio = true);
     
-    // Simulate TTS
-    Future.delayed(const Duration(seconds: 2), () {
-      if (mounted) setState(() => _isPlayingAudio = false);
-    });
+    await flutterTts.setLanguage("en-US");
+    await flutterTts.speak(_currentPhrase['english'] as String);
   }
 
-  void _handleStopAudio() {
+  void _handleStopAudio() async {
     HapticFeedback.lightImpact();
+    await flutterTts.stop();
     setState(() => _isPlayingAudio = false);
   }
 
@@ -378,7 +384,7 @@ class _MainTranslationScreenState extends State<MainTranslationScreen> with Sing
                     const SizedBox(width: 16),
                     IconButton(
                       onPressed: _isPlayingAudio ? _handleStopAudio : _handlePlayAudio,
-                      icon: Icon(_isPlayingAudio ? Icons.volume_off : Icons.volume_up, color: Colors.white, size: 28),
+                      icon: Icon(_isPlayingAudio ? Icons.mic_off : Icons.mic, color: Colors.white, size: 28),
                       style: IconButton.styleFrom(
                         backgroundColor: _isPlayingAudio ? const Color(0xFF334155) : const Color(0xFF1976D2),
                         padding: const EdgeInsets.all(16),

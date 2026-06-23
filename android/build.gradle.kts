@@ -22,3 +22,13 @@ subprojects {
 tasks.register<Delete>("clean") {
     delete(rootProject.layout.buildDirectory)
 }
+
+subprojects {
+    afterEvaluate {
+        if (project.name == "camera_android_camerax") {
+            dependencies {
+                add("implementation", "androidx.concurrent:concurrent-futures:1.1.0")
+            }
+        }
+    }
+}

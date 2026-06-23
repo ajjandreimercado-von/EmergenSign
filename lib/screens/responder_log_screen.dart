@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../models/log_entry.dart';
-// Note: flutter_tts could be used for text-to-speech, but sticking to basic UI and simulated audio for now.
 import 'package:flutter/services.dart';
+import 'package:flutter_tts/flutter_tts.dart';
 
 class ResponderLogScreen extends StatefulWidget {
   final VoidCallback onBack;
@@ -22,8 +22,27 @@ class ResponderLogScreen extends StatefulWidget {
 
 class _ResponderLogScreenState extends State<ResponderLogScreen> {
   String? _playingId;
+  final FlutterTts flutterTts = FlutterTts();
 
-  void _handlePlayAudio(LogEntry entry) {
+  @override
+  void initState() {
+    super.initState();
+    flutterTts.setCompletionHandler(() {
+      if (mounted) {
+        setState(() {
+          _playingId = null;
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    flutterTts.stop();
+    super.dispose();
+  }
+
+  void _handlePlayAudio(LogEntry entry) async {
     HapticFeedback.lightImpact();
     if (_playingId == entry.id) {
       setState(() {
@@ -36,18 +55,13 @@ class _ResponderLogScreenState extends State<ResponderLogScreen> {
       _playingId = entry.id;
     });
 
-    // Simulate audio playing
-    Future.delayed(const Duration(seconds: 2), () {
-      if (mounted && _playingId == entry.id) {
-        setState(() {
-          _playingId = null;
-        });
-      }
-    });
+    await flutterTts.setLanguage("en-US");
+    await flutterTts.speak(entry.english);
   }
 
-  void _handleStopAudio(String entryId) {
+  void _handleStopAudio(String entryId) async {
     HapticFeedback.lightImpact();
+    await flutterTts.stop();
     setState(() {
       _playingId = null;
     });
