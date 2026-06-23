@@ -24,11 +24,9 @@ tasks.register<Delete>("clean") {
 }
 
 subprojects {
-    afterEvaluate {
-        if (project.name == "camera_android_camerax") {
-            dependencies {
-                add("implementation", "androidx.concurrent:concurrent-futures:1.1.0")
-            }
+    if (project.name == "camera_android_camerax") {
+        project.configurations.all {
+            dependencies.add(project.dependencies.create("androidx.concurrent:concurrent-futures:1.1.0"))
         }
     }
 }
