@@ -10,6 +10,7 @@ class MainTranslationScreen extends StatefulWidget {
   final VoidCallback onNavigateToLog;
   final VoidCallback onShowError;
   final VoidCallback onStop;
+  final VoidCallback onResume;
   final bool isDetecting;
   final Function(LogEntry) onAddLogEntry;
   final CameraController? cameraController;
@@ -19,6 +20,7 @@ class MainTranslationScreen extends StatefulWidget {
     required this.onNavigateToLog,
     required this.onShowError,
     required this.onStop,
+    required this.onResume,
     required this.isDetecting,
     required this.onAddLogEntry,
     this.cameraController,
@@ -67,6 +69,10 @@ class _MainTranslationScreenState extends State<MainTranslationScreen> with Sing
   void _startSimulation() {
     _simulationTimer?.cancel();
     if (!widget.isDetecting) return;
+    
+    setState(() {
+      _detectedWords = 0;
+    });
     
     _simulationTimer = Timer.periodic(const Duration(milliseconds: 1500), (timer) {
       if (mounted) {
@@ -137,11 +143,11 @@ class _MainTranslationScreenState extends State<MainTranslationScreen> with Sing
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               ElevatedButton.icon(
-                onPressed: _handleStop,
-                icon: const Icon(Icons.close, size: 20),
-                label: const Text('Stop', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                onPressed: widget.isDetecting ? _handleStop : widget.onResume,
+                icon: Icon(widget.isDetecting ? Icons.close : Icons.play_arrow, size: 20),
+                label: Text(widget.isDetecting ? 'Stop' : 'Resume', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFD32F2F),
+                  backgroundColor: widget.isDetecting ? const Color(0xFFD32F2F) : const Color(0xFF10B981),
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -150,26 +156,29 @@ class _MainTranslationScreenState extends State<MainTranslationScreen> with Sing
               ),
               Row(
                 children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFECFDF5),
-                      border: Border.all(color: const Color(0xFFA7F3D0)),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 6,
-                          height: 6,
-                          decoration: const BoxDecoration(
-                            color: Color(0xFF10B981),
-                            shape: BoxShape.circle,
+                  GestureDetector(
+                    onTap: widget.onShowError,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFECFDF5),
+                        border: Border.all(color: const Color(0xFFA7F3D0)),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 6,
+                            height: 6,
+                            decoration: const BoxDecoration(
+                              color: Color(0xFF10B981),
+                              shape: BoxShape.circle,
+                            ),
                           ),
-                        ),
-                        const SizedBox(width: 6),
-                        const Text('Offline', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: Color(0xFF047857))),
-                      ],
+                          const SizedBox(width: 6),
+                          const Text('Offline', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: Color(0xFF047857))),
+                        ],
+                      ),
                     ),
                   ),
                   const SizedBox(width: 12),

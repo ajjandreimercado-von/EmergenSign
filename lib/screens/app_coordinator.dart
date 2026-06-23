@@ -122,6 +122,7 @@ class _AppCoordinatorState extends State<AppCoordinator> {
           onNavigateToLog: () => setState(() => _activeScreen = 'log'),
           onShowError: () => setState(() => _activeScreen = 'error'),
           onStop: _handleStopDetection,
+          onResume: _handleResumeDetection,
           isDetecting: _isDetecting,
           onAddLogEntry: _handleAddLogEntry,
           cameraController: _cameraController,
