@@ -15,20 +15,24 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
         applicationId = "com.emergensign.emergensign"
-        // You can update the following values to match your application needs.
-        // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdk = flutter.minSdkVersion
+        // Android 8.0 Oreo (API 26) minimum — required for MediaPipe Tasks Vision
+        minSdk = 26
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }
 
+    // Prevent the .task model file from being compressed in the APK.
+    // MediaPipe requires direct memory-mapping of the model, which breaks
+    // if the file is zlib-compressed inside the APK archive.
+    aaptOptions {
+        noCompress += listOf("task")
+    }
+
     buildTypes {
         release {
             // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
             signingConfig = signingConfigs.getByName("debug")
         }
     }
@@ -46,4 +50,8 @@ flutter {
 
 dependencies {
     implementation("androidx.concurrent:concurrent-futures:1.1.0")
+
+    // MediaPipe Tasks Vision — includes HandLandmarker, fully on-device (no network).
+    // Version 0.10.14 targets Android 8.0+ (API 26+).
+    implementation("com.google.mediapipe:tasks-vision:0.10.14")
 }
