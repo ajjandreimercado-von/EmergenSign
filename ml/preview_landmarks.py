@@ -25,7 +25,13 @@ from mediapipe.tasks.python import vision as mp_vision
 from mediapipe.tasks.python.core import base_options as mp_base
 from tqdm import tqdm
 
-from preprocessing import ROOT, load_config, load_sign_index
+from preprocessing import (
+    ROOT,
+    load_config,
+    load_sign_index,
+    map_face_landmarks_to_full,
+    prepare_face_rgb,
+)
 
 cfg = load_config()
 SIGN_INDEX = load_sign_index()
@@ -64,7 +70,9 @@ def make_face_landmarker():
         ),
         running_mode=mp_vision.RunningMode.VIDEO,
         num_faces=1,
-        min_face_detection_confidence=cfg["min_face_detection_confidence"],
+        min_face_detection_confidence=min(
+            0.3, float(cfg["min_face_detection_confidence"])
+        ),
         output_face_blendshapes=False,
         output_facial_transformation_matrixes=False,
     )
@@ -209,16 +217,28 @@ def preview_video(
             frame_idx += 1
 
             hand_result = hands.detect_for_video(mp_image, ts_ms)
-            face_result = face.detect_for_video(mp_image, ts_ms)
+
+            face_rgb, x0, y0, cw, ch, _scale = prepare_face_rgb(bgr)
+            face_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=face_rgb)
+            face_result = face.detect_for_video(face_image, ts_ms)
 
             annotated = bgr.copy()
             if hand_result.hand_landmarks:
                 draw_hands(annotated, hand_result.hand_landmarks)
+            n_face = len(face_result.face_landmarks or [])
             if face_result.face_landmarks:
-                draw_face(annotated, face_result.face_landmarks)
+                mapped = map_face_landmarks_to_full(
+                    face_result.face_landmarks,
+                    x0,
+                    y0,
+                    cw,
+                    ch,
+                    width,
+                    height,
+                )
+                draw_face(annotated, mapped)
 
             n_hands = len(hand_result.hand_landmarks or [])
-            n_face = len(face_result.face_landmarks or [])
             draw_banner(
                 annotated,
                 f"{label} | hands={n_hands} face={n_face} | EmergenSign preview",

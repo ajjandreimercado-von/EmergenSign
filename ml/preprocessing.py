@@ -79,6 +79,73 @@ def load_sign_index() -> dict[str, int]:
     return {item["sign_id"]: item["class_index"] for item in data["labels"]}
 
 
+def face_roi_bgr(bgr: np.ndarray) -> tuple[np.ndarray, int, int, int, int]:
+    """
+    Upper-center crop for half-body FSL framing.
+
+    Full 1080p frames often make the face too small for FaceLandmarker;
+    this ROI matches where the face sits and restores detection.
+    Returns (crop, x0, y0, crop_w, crop_h) in original pixel space.
+    """
+    h, w = bgr.shape[:2]
+    y0, y1 = 0, max(1, int(h * 0.58))
+    x0, x1 = int(w * 0.22), int(w * 0.78)
+    crop = bgr[y0:y1, x0:x1]
+    return crop, x0, y0, crop.shape[1], crop.shape[0]
+
+
+def prepare_face_rgb(bgr: np.ndarray) -> tuple[np.ndarray, int, int, int, int, float]:
+    """
+    Build an RGB face crop (optionally upscaled) for MediaPipe.
+    Returns (rgb, x0, y0, orig_crop_w, orig_crop_h, scale).
+    """
+    import cv2
+
+    crop, x0, y0, cw, ch = face_roi_bgr(bgr)
+    scale = 1.0
+    if min(ch, cw) < 480:
+        scale = 2.0
+        crop = cv2.resize(
+            crop, (int(cw * scale), int(ch * scale)), interpolation=cv2.INTER_LINEAR
+        )
+    rgb = cv2.cvtColor(crop, cv2.COLOR_BGR2RGB)
+    return rgb, x0, y0, cw, ch, scale
+
+
+def map_face_landmarks_to_full(
+    face_landmarks,
+    x0: int,
+    y0: int,
+    orig_crop_w: int,
+    orig_crop_h: int,
+    full_w: int,
+    full_h: int,
+):
+    """Remap crop-normalized face landmarks to full-frame normalized coords."""
+
+    class _Lm:
+        __slots__ = ("x", "y", "z")
+
+        def __init__(self, x: float, y: float, z: float = 0.0):
+            self.x = x
+            self.y = y
+            self.z = z
+
+    mapped = []
+    for landmarks in face_landmarks:
+        mapped.append(
+            [
+                _Lm(
+                    (x0 + lm.x * orig_crop_w) / full_w,
+                    (y0 + lm.y * orig_crop_h) / full_h,
+                    getattr(lm, "z", 0.0),
+                )
+                for lm in landmarks
+            ]
+        )
+    return mapped
+
+
 def wrist_relative_flat63(landmarks) -> np.ndarray:
     """21 landmarks → 63-d wrist-relative vector (Tasks NormalizedLandmark)."""
     wrist = landmarks[0]

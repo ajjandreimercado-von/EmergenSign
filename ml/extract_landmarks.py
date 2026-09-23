@@ -31,6 +31,7 @@ from preprocessing import (
     hands_to_hand_vector,
     load_config,
     load_sign_index,
+    prepare_face_rgb,
 )
 
 cfg = load_config()
@@ -63,7 +64,9 @@ def make_face_landmarker():
         ),
         running_mode=mp_vision.RunningMode.VIDEO,
         num_faces=1,
-        min_face_detection_confidence=cfg["min_face_detection_confidence"],
+        min_face_detection_confidence=min(
+            0.3, float(cfg["min_face_detection_confidence"])
+        ),
         output_face_blendshapes=True,
         output_facial_transformation_matrixes=False,
     )
@@ -106,7 +109,11 @@ def extract_video(video_path: Path) -> tuple[np.ndarray, np.ndarray, np.ndarray]
             last_ts = ts_ms
 
             hand_result = hands.detect_for_video(mp_image, ts_ms)
-            face_result = face.detect_for_video(mp_image, ts_ms)
+
+            # Face: run on upper-center ROI (full half-body frame is too wide).
+            face_rgb, _, _, _, _, _ = prepare_face_rgb(bgr)
+            face_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=face_rgb)
+            face_result = face.detect_for_video(face_image, ts_ms)
 
             hand_ok = bool(hand_result.hand_landmarks)
             if hand_ok:
@@ -166,6 +173,7 @@ def main() -> int:
     print(f"Processing {len(videos)} videos…")
     saved = 0
     skipped_existing = 0
+    force = "--force" in sys.argv
     for video in tqdm(videos):
         sign_id = video.parent.name
         if sign_id not in SIGN_INDEX:
@@ -175,7 +183,7 @@ def main() -> int:
         out_dir = OUT_DIR / sign_id
         stem = video.stem
         out_feat = out_dir / f"{stem}.npy"
-        if out_feat.exists():
+        if out_feat.exists() and not force:
             print(f"  [skip existing] {sign_id}/{stem}")
             skipped_existing += 1
             saved += 1
